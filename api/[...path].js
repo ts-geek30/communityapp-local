@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // CORS Headers
+  // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -13,12 +13,8 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Extract path and query string from request URL
-  const urlParts = req.url.split('?');
-  const path = urlParts[0]; // e.g., /api/v1/auth/login
-  const queryString = urlParts.length > 1 ? `?${urlParts[1]}` : '';
-
-  const targetUrl = `http://168.144.216.118:5000${path}${queryString}`;
+  // req.url is e.g. /api/v1/auth/login
+  const targetUrl = `http://168.144.216.118:5000${req.url}`;
 
   try {
     const headers = {};
@@ -35,7 +31,9 @@ export default async function handler(req, res) {
     };
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+      if (req.body) {
+        fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      }
     }
 
     const backendResponse = await fetch(targetUrl, fetchOptions);
