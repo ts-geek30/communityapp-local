@@ -23,6 +23,9 @@ export default async function handler(req, res) {
     if (req.headers['authorization']) {
       headers['authorization'] = req.headers['authorization'];
     }
+    if (req.headers['accept']) {
+      headers['accept'] = req.headers['accept'];
+    }
 
     const fetchOptions = {
       method: req.method,
@@ -30,8 +33,9 @@ export default async function handler(req, res) {
     };
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      const bodyData = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-      fetchOptions.body = bodyData;
+      if (req.body !== undefined && req.body !== null) {
+        fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      }
     }
 
     const backendResponse = await fetch(targetUrl, fetchOptions);
