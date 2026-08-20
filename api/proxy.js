@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // Handle CORS headers
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -13,13 +13,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { path } = req.query;
-  const pathString = Array.isArray(path) ? path.join('/') : (path || '');
-  
+  // Extract path and query string from request URL
   const urlParts = req.url.split('?');
+  const path = urlParts[0]; // e.g., /api/v1/auth/login
   const queryString = urlParts.length > 1 ? `?${urlParts[1]}` : '';
 
-  const targetUrl = `http://168.144.216.118:5000/api/v1/${pathString}${queryString}`;
+  const targetUrl = `http://168.144.216.118:5000${path}${queryString}`;
 
   try {
     const headers = {};
