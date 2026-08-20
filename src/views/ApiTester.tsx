@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Copy, Check, Info, FileUp, Sparkles } from 'lucide-react';
+import { BASE_URL } from '../config/api';
 
 interface Endpoint {
   name: string;
@@ -484,8 +485,7 @@ export const ApiTester: React.FC<ApiTesterProps> = ({ communityId, showToast }) 
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const baseURL = 'http://localhost:5000/api/v1';
-    const requestURL = `${baseURL}${interpolatedPath}`;
+    const requestURL = `${BASE_URL}${interpolatedPath}`;
 
     try {
       let response: Response;
@@ -573,7 +573,7 @@ export const ApiTester: React.FC<ApiTesterProps> = ({ communityId, showToast }) 
       const endTime = performance.now();
       setResponseTime(Math.round(endTime - startTime));
       setResponseStatus('Network Error / Connection Refused');
-      setResponseBody({ error: err.message || 'Check if local server is running on port 5000.' });
+      setResponseBody({ error: err.message || 'Check if backend server is running and accessible.' });
     } finally {
       setLoading(false);
     }
