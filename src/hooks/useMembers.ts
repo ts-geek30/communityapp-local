@@ -87,9 +87,14 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
     setFilteredMembers(filtered);
   }, [searchQuery, members]);
 
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportStatus, setExportStatus] = useState('');
+
   const exportMembers = async (startDate?: string, endDate?: string) => {
     if (!communityId) return;
     setExporting(true);
+    setExportProgress(15);
+    setExportStatus('Connecting to directory...');
     try {
       let allMembers: MemberRecord[] = [];
       let currentPage = 1;
@@ -97,11 +102,13 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
       const exportLimit = 100;
 
       while (moreToFetch) {
+        setExportStatus(`Fetching records (page ${currentPage})...`);
         const res = await apiGet(
           `/communities/${communityId}/members?limit=${exportLimit}&page=${currentPage}`
         );
         if (res.success && Array.isArray(res.data) && res.data.length > 0) {
           allMembers = [...allMembers, ...res.data];
+          setExportProgress(Math.min(20 + currentPage * 20, 75));
           if (res.data.length < exportLimit) {
             moreToFetch = false;
           } else {
@@ -117,14 +124,25 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
         return;
       }
 
+      setExportProgress(80);
+      setExportStatus('Filtering records by date...');
+
       let filtered = allMembers;
       if (startDate) {
         const start = new Date(`${startDate}T00:00:00.000Z`).getTime();
-        filtered = filtered.filter((m) => new Date(m.joinedAt).getTime() >= start);
+        filtered = filtered.filter((m) => {
+          const raw = m.joinedAt || (m as any).createdAt || (m as any).joined_at || (m as any).created_at;
+          const time = raw ? new Date(raw).getTime() : NaN;
+          return !isNaN(time) && time >= start;
+        });
       }
       if (endDate) {
         const end = new Date(`${endDate}T23:59:59.999Z`).getTime();
-        filtered = filtered.filter((m) => new Date(m.joinedAt).getTime() <= end);
+        filtered = filtered.filter((m) => {
+          const raw = m.joinedAt || (m as any).createdAt || (m as any).joined_at || (m as any).created_at;
+          const time = raw ? new Date(raw).getTime() : NaN;
+          return !isNaN(time) && time <= end;
+        });
       }
 
       if (filtered.length === 0) {
@@ -132,12 +150,22 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
         return;
       }
 
+      setExportProgress(95);
+      setExportStatus(`Generating CSV for ${filtered.length} member${filtered.length > 1 ? 's' : ''}...`);
+      await new Promise((r) => setTimeout(r, 200));
+
       downloadMembersCsv(filtered, 'community_members');
+      setExportProgress(100);
+      setExportStatus('Download started!');
+      await new Promise((r) => setTimeout(r, 250));
+
       showToast(`Exported ${filtered.length} members successfully!`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to export members', 'error');
     } finally {
       setExporting(false);
+      setExportProgress(0);
+      setExportStatus('');
     }
   };
 
@@ -148,6 +176,8 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
     setSearchQuery,
     loading,
     exporting,
+    exportProgress,
+    exportStatus,
     exportMembers,
     page,
     setPage,
