@@ -65,6 +65,11 @@ export const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     color: 'var(--text-secondary)',
   },
+  familyCount: {
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: 'var(--text-primary)',
+  },
   roleText: {
     fontSize: '0.85rem',
     color: 'var(--text-accent)',

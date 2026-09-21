@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from '../config/api';
 
+export type EventSourceFilter = 'ALL' | 'ZINGGUP' | 'INTERNAL';
+
 export interface EventItem {
   id: string;
   communityId: string;
   title: string;
-  ziingupEventId: string;
-  ziingupEventUrl: string;
+  ziingupEventId?: string | null;
+  ziingupEventUrl?: string | null;
   eventDate: string | null;
   createdById: string;
   isPublishedAsAnnouncement: boolean;
   status: string | null;
+  source?: string;
 }
 
 interface UseEventsProps {
@@ -23,12 +26,13 @@ export const useEvents = ({ communityId, showToast }: UseEventsProps) => {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [source, setSource] = useState<EventSourceFilter>('ZINGGUP');
 
   const fetchEvents = useCallback(async () => {
     if (!communityId) return;
     setLoading(true);
     try {
-      const res = await apiGet(`/admin/${communityId}/events`);
+      const res = await apiGet(`/admin/${communityId}/events?source=${source}`);
       if (res.success && Array.isArray(res.data)) {
         setEvents(res.data);
       } else {
@@ -39,7 +43,7 @@ export const useEvents = ({ communityId, showToast }: UseEventsProps) => {
     } finally {
       setLoading(false);
     }
-  }, [communityId, showToast]);
+  }, [communityId, source, showToast]);
 
   const handleSync = async () => {
     if (!communityId) return;
@@ -90,6 +94,8 @@ export const useEvents = ({ communityId, showToast }: UseEventsProps) => {
     loading,
     syncing,
     publishingId,
+    source,
+    setSource,
     handleSync,
     handlePublishAnnouncement,
     refetch: fetchEvents,

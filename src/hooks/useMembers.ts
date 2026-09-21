@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { apiGet } from '../config/api';
+import { downloadMembersCsv } from '../utils/csvExport';
 
 interface MemberRecord {
   id: string;
   userId: string;
   joinedAt: string;
   role: string;
+  familyMemberCount?: number;
   user: {
     mobileNumber: string;
     profile?: {
       fullName: string;
       city: string;
+      nativeVillage?: string;
       surname: string;
       gotra: string;
     };
@@ -27,6 +30,7 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
   const [filteredMembers, setFilteredMembers] = useState<MemberRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -83,12 +87,68 @@ export const useMembers = ({ communityId, showToast }: UseMembersProps) => {
     setFilteredMembers(filtered);
   }, [searchQuery, members]);
 
+  const exportMembers = async (startDate?: string, endDate?: string) => {
+    if (!communityId) return;
+    setExporting(true);
+    try {
+      let allMembers: MemberRecord[] = [];
+      let currentPage = 1;
+      let moreToFetch = true;
+      const exportLimit = 100;
+
+      while (moreToFetch) {
+        const res = await apiGet(
+          `/communities/${communityId}/members?limit=${exportLimit}&page=${currentPage}`
+        );
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          allMembers = [...allMembers, ...res.data];
+          if (res.data.length < exportLimit) {
+            moreToFetch = false;
+          } else {
+            currentPage++;
+          }
+        } else {
+          moreToFetch = false;
+        }
+      }
+
+      if (allMembers.length === 0) {
+        showToast('No approved members found to export', 'info');
+        return;
+      }
+
+      let filtered = allMembers;
+      if (startDate) {
+        const start = new Date(`${startDate}T00:00:00.000Z`).getTime();
+        filtered = filtered.filter((m) => new Date(m.joinedAt).getTime() >= start);
+      }
+      if (endDate) {
+        const end = new Date(`${endDate}T23:59:59.999Z`).getTime();
+        filtered = filtered.filter((m) => new Date(m.joinedAt).getTime() <= end);
+      }
+
+      if (filtered.length === 0) {
+        showToast('No members found within the selected date range', 'info');
+        return;
+      }
+
+      downloadMembersCsv(filtered, 'community_members');
+      showToast(`Exported ${filtered.length} members successfully!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to export members', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return {
     members,
     filteredMembers,
     searchQuery,
     setSearchQuery,
     loading,
+    exporting,
+    exportMembers,
     page,
     setPage,
     hasMore,

@@ -1,6 +1,7 @@
-import React from 'react';
-import { Users, Search, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Search, ChevronLeft, ChevronRight, Check, Download } from 'lucide-react';
 import { useMembers } from '../hooks/useMembers';
+import { ExportMembersModal } from '../components/ExportMembersModal';
 import { styles } from '../styles/Members.styles';
 
 interface MembersProps {
@@ -9,11 +10,15 @@ interface MembersProps {
 }
 
 export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
   const {
     filteredMembers,
     searchQuery,
     setSearchQuery,
     loading,
+    exporting,
+    exportMembers,
     page,
     setPage,
     hasMore,
@@ -21,12 +26,30 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
 
   return (
     <div className="glass-panel animate-fade-in" style={styles.card}>
-      <div style={styles.header}>
-        <div style={styles.titleInfo}>
-          <Users size={22} color="var(--accent)" />
-          <h2 style={styles.title}>Approved Members Directory</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <div style={styles.titleInfo}>
+            <Users size={22} color="var(--accent)" />
+            <h2 style={styles.title}>Approved Members Directory</h2>
+          </div>
+          <p style={styles.subtitle}>Browse and search all approved members in this community</p>
         </div>
-        <p style={styles.subtitle}>Browse and search all approved members in this community</p>
+        <button
+          onClick={() => setIsExportModalOpen(true)}
+          className="btn btn-secondary"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            fontSize: '0.85rem',
+            cursor: 'pointer',
+          }}
+          title="Export members to CSV with date range"
+        >
+          <Download size={16} color="var(--accent)" />
+          <span>Export CSV</span>
+        </button>
       </div>
 
       <div style={styles.searchBarWrapper}>
@@ -54,6 +77,7 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
                   <th>Name</th>
                   <th>Mobile Number</th>
                   <th>Gotra & Surname</th>
+                  <th>Family Members</th>
                   <th>Role</th>
                   <th>Joined Date</th>
                   <th>Status</th>
@@ -78,6 +102,11 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
                       <td>
                         <div style={styles.gotraDetails}>
                           {profile?.gotra || 'N/A'} • {profile?.surname || 'N/A'}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={styles.familyCount}>
+                          {member.familyMemberCount ?? 0}
                         </div>
                       </td>
                       <td>
@@ -136,6 +165,17 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
           </p>
         </div>
       )}
+
+      {/* Export Members Modal */}
+      <ExportMembersModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={async (start, end) => {
+          await exportMembers(start, end);
+          setIsExportModalOpen(false);
+        }}
+        loading={exporting}
+      />
     </div>
   );
 };
