@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Calendar, X, FileSpreadsheet } from 'lucide-react';
+import { Download, Calendar, X, FileSpreadsheet, Loader2 } from 'lucide-react';
 
 interface ExportMembersModalProps {
   isOpen: boolean;
   onClose: () => void;
   onExport: (startDate?: string, endDate?: string) => Promise<void>;
   loading: boolean;
+  progress?: number;
+  statusText?: string;
 }
 
 type PresetType = 'all' | '7d' | '30d' | 'month' | 'custom';
@@ -15,12 +17,19 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
   onClose,
   onExport,
   loading,
+  progress = 0,
+  statusText = '',
 }) => {
   const [preset, setPreset] = useState<PresetType>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  const formatDate = (date: Date) => date.toISOString().split('T')[0];
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const handlePresetSelect = (type: PresetType) => {
     setPreset(type);
@@ -66,7 +75,11 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
       alert('Start Date cannot be after End Date.');
       return;
     }
-    await onExport(startDate || undefined, endDate || undefined);
+    try {
+      await onExport(startDate || undefined, endDate || undefined);
+    } finally {
+      onClose();
+    }
   };
 
   return (
@@ -74,28 +87,26 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
         padding: '20px',
-        animation: 'fadeIn 0.2s ease-out forwards',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
       }}
     >
       <div
-        className="glass-panel"
         style={{
           width: '100%',
-          maxWidth: '480px',
-          padding: '28px',
+          maxWidth: '490px',
+          backgroundColor: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
           borderRadius: 'var(--radius-md)',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border)',
+          padding: '28px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
           position: 'relative',
           animation: 'modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         }}
@@ -122,23 +133,24 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
           <X size={18} />
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
           <div
             style={{
               width: '42px',
               height: '42px',
-              borderRadius: '12px',
-              background: 'rgba(99, 102, 241, 0.12)',
-              border: '1px solid rgba(99, 102, 241, 0.25)',
+              borderRadius: '10px',
+              background: 'var(--bg-hover)',
+              border: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
             <FileSpreadsheet size={22} color="var(--accent)" />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
               Export Members to CSV
             </h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -165,18 +177,22 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
                   <button
                     key={item.id}
                     type="button"
+                    disabled={loading}
                     onClick={() => handlePresetSelect(item.id as PresetType)}
                     className="btn"
                     style={{
-                      background: isActive ? 'var(--accent-glow)' : 'transparent',
+                      background: isActive ? 'var(--accent)' : 'var(--bg-hover)',
                       borderColor: isActive ? 'var(--accent)' : 'var(--border)',
                       borderWidth: '1px',
                       borderStyle: 'solid',
-                      color: isActive ? 'var(--text-accent)' : 'var(--text-secondary)',
+                      color: isActive ? '#ffffff' : 'var(--text-secondary)',
                       fontSize: '0.8rem',
+                      fontWeight: isActive ? 500 : 400,
                       padding: '6px 12px',
                       borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                      opacity: loading ? 0.6 : 1,
                     }}
                   >
                     {item.label}
@@ -260,12 +276,74 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
             </span>
           </div>
 
+          {/* Progress Bar Display when loading */}
+          {loading && (
+            <div
+              style={{
+                marginTop: '18px',
+                padding: '14px 16px',
+                background: 'var(--bg-hover)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                  fontSize: '0.82rem',
+                }}
+              >
+                <span
+                  style={{
+                    fontWeight: 500,
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <Loader2 size={14} className="animate-spin" />
+                  {statusText || 'Preparing CSV export...'}
+                </span>
+                <span style={{ fontWeight: 600, color: 'var(--accent)', fontSize: '0.8rem' }}>
+                  {progress && progress > 0 ? `${progress}%` : ''}
+                </span>
+              </div>
+              <div
+                style={{
+                  width: '100%',
+                  height: '6px',
+                  backgroundColor: 'var(--bg-primary)',
+                  borderRadius: '9999px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    width: progress && progress > 0 ? `${progress}%` : '100%',
+                    height: '100%',
+                    background: 'var(--accent-gradient, linear-gradient(90deg, #6366f1, #a855f7))',
+                    borderRadius: '9999px',
+                    transition: 'width 0.3s ease-in-out',
+                    ...(progress && progress > 0
+                      ? {}
+                      : { animation: 'progressIndeterminate 1.5s infinite ease-in-out' }),
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           <div
             style={{
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '10px',
-              marginTop: '24px',
+              marginTop: '22px',
               paddingTop: '16px',
               borderTop: '1px solid var(--border)',
             }}
@@ -285,8 +363,17 @@ export const ExportMembersModal: React.FC<ExportMembersModalProps> = ({
               disabled={loading}
               style={{ padding: '8px 20px', fontSize: '0.85rem' }}
             >
-              <Download size={15} />
-              <span>{loading ? 'Exporting...' : 'Download CSV'}</span>
+              {loading ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Preparing...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={15} />
+                  <span>Download CSV</span>
+                </>
+              )}
             </button>
           </div>
         </form>

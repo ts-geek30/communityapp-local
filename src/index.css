@@ -248,8 +248,23 @@ h1, h2, h3, h4, h5, h6 {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progressIndeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(20%); }
+  100% { transform: translateX(120%); }
+}
+
 .animate-fade-in {
   animation: fadeIn var(--transition-normal) forwards;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
 /* Table styling */

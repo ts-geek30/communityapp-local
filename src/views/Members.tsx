@@ -18,6 +18,8 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
     setSearchQuery,
     loading,
     exporting,
+    exportProgress,
+    exportStatus,
     exportMembers,
     page,
     setPage,
@@ -114,11 +116,18 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
                       </td>
                       <td>
                         <div style={styles.dateText}>
-                          {new Date(member.joinedAt).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
+                          {(() => {
+                            const raw = member.joinedAt || (member as any).createdAt || (member as any).joined_at || (member as any).created_at;
+                            if (!raw) return 'N/A';
+                            const d = new Date(raw);
+                            return isNaN(d.getTime()) || d.getTime() <= 0
+                              ? 'N/A'
+                              : d.toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                });
+                          })()}
                         </div>
                       </td>
                       <td>
@@ -171,10 +180,15 @@ export const Members: React.FC<MembersProps> = ({ communityId, showToast }) => {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         onExport={async (start, end) => {
-          await exportMembers(start, end);
-          setIsExportModalOpen(false);
+          try {
+            await exportMembers(start, end);
+          } finally {
+            setIsExportModalOpen(false);
+          }
         }}
         loading={exporting}
+        progress={exportProgress}
+        statusText={exportStatus}
       />
     </div>
   );
