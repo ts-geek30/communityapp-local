@@ -11,6 +11,8 @@ interface ApprovalsProps {
 export const Approvals: React.FC<ApprovalsProps> = ({ communityId, showToast }) => {
   const {
     requests,
+    pendingCount,
+    rejectedCount,
     loading,
     actioningId,
     activeTab,
@@ -52,7 +54,7 @@ export const Approvals: React.FC<ApprovalsProps> = ({ communityId, showToast }) 
             cursor: 'pointer',
           }}
         >
-          Pending ({activeTab === 'pending' ? requests.length : '...'})
+          Pending ({pendingCount})
         </button>
         <button
           onClick={() => setActiveTab('rejected')}
@@ -69,7 +71,7 @@ export const Approvals: React.FC<ApprovalsProps> = ({ communityId, showToast }) 
             cursor: 'pointer',
           }}
         >
-          Rejected ({activeTab === 'rejected' ? requests.length : '...'})
+          Rejected ({rejectedCount})
         </button>
       </div>
 

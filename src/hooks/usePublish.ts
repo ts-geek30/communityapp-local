@@ -101,10 +101,11 @@ export const usePublish = ({ communityId, showToast }: UsePublishProps) => {
     setAnnContent('');
   };
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const handleDeleteAnnouncement = async (announcementId: string) => {
     if (!communityId) return;
-    if (!window.confirm('Are you sure you want to delete this announcement?')) return;
-
+    setDeletingId(announcementId);
     try {
       const res = await apiDelete(`/admin/${communityId}/announcements/${announcementId}`);
       if (res.success) {
@@ -116,6 +117,8 @@ export const usePublish = ({ communityId, showToast }: UsePublishProps) => {
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to delete announcement', 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -129,6 +132,7 @@ export const usePublish = ({ communityId, showToast }: UsePublishProps) => {
     activeForm,
     setActiveForm,
     loading,
+    deletingId,
     annTitle,
     setAnnTitle,
     annContent,

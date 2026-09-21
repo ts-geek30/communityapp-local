@@ -9,7 +9,6 @@ import { Dashboard } from './views/Dashboard';
 import { Approvals } from './views/Approvals';
 import { Members } from './views/Members';
 import { Publish } from './views/Publish';
-import { ApiTester } from './views/ApiTester';
 
 export const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(getAuthToken());
@@ -144,8 +143,6 @@ export const App: React.FC = () => {
         return <Members communityId={communityId} showToast={showToast} />;
       case 'publish':
         return <Publish communityId={communityId} showToast={showToast} />;
-      case 'api_tester':
-        return <ApiTester communityId={communityId} showToast={showToast} />;
       default:
         return <div>Tab not found</div>;
     }

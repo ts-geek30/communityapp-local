@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Send, Calendar, RefreshCw, ExternalLink, Megaphone, Check, Edit, Trash2 } from 'lucide-react';
 import { usePublish } from '../hooks/usePublish';
 import { useEvents } from '../hooks/useEvents';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { styles } from '../styles/Publish.styles';
 
 interface PublishProps {
@@ -10,10 +11,13 @@ interface PublishProps {
 }
 
 export const Publish: React.FC<PublishProps> = ({ communityId, showToast }) => {
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+
   const {
     activeForm,
     setActiveForm,
     loading,
+    deletingId,
     annTitle,
     setAnnTitle,
     annContent,
@@ -32,6 +36,8 @@ export const Publish: React.FC<PublishProps> = ({ communityId, showToast }) => {
     loading: eventsLoading,
     syncing,
     publishingId,
+    source,
+    setSource,
     handleSync,
     handlePublishAnnouncement: handlePublishEventAnnouncement,
   } = useEvents({ communityId, showToast });
@@ -166,7 +172,7 @@ export const Publish: React.FC<PublishProps> = ({ communityId, showToast }) => {
                             <Edit size={14} />
                           </button>
                           <button
-                            onClick={() => handleDeleteAnnouncement(ann.id)}
+                            onClick={() => setDeleteTarget({ id: ann.id, title: ann.title })}
                             className="btn"
                             style={{ padding: '6px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             title="Delete Announcement"
@@ -203,6 +209,40 @@ export const Publish: React.FC<PublishProps> = ({ communityId, showToast }) => {
               <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
               <span>{syncing ? 'Syncing...' : 'Sync from Ziingup'}</span>
             </button>
+          </div>
+
+          {/* Source Filter Pills */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '14px', marginBottom: '8px' }}>
+            {(
+              [
+                { id: 'ZINGGUP', label: 'Ziingup Events' },
+                { id: 'INTERNAL', label: 'Internal Announcements' },
+                { id: 'ALL', label: 'All' },
+              ] as const
+            ).map((item) => {
+              const isActive = source === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSource(item.id)}
+                  className="btn"
+                  style={{
+                    background: isActive ? 'var(--accent-glow)' : 'transparent',
+                    borderColor: isActive ? 'var(--accent)' : 'var(--border)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    color: isActive ? 'var(--text-accent)' : 'var(--text-secondary)',
+                    fontSize: '0.8rem',
+                    padding: '5px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
           {eventsLoading ? (
@@ -243,20 +283,28 @@ export const Publish: React.FC<PublishProps> = ({ communityId, showToast }) => {
                           </div>
                         </td>
                         <td>
-                          <code style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            {event.ziingupEventId}
-                          </code>
+                          {event.ziingupEventId ? (
+                            <code style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                              {event.ziingupEventId}
+                            </code>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
+                          )}
                         </td>
                         <td>
-                          <a
-                            href={event.ziingupEventUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={styles.eventLink}
-                          >
-                            <span>Link</span>
-                            <ExternalLink size={12} />
-                          </a>
+                          {event.ziingupEventUrl ? (
+                            <a
+                              href={event.ziingupEventUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={styles.eventLink}
+                            >
+                              <span>Link</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
+                          )}
                         </td>
                         <td>
                           {isPublished ? (
@@ -323,6 +371,25 @@ export const Publish: React.FC<PublishProps> = ({ communityId, showToast }) => {
           )}
         </div>
       )}
+
+      {/* Confirmation Modal for Delete Actions */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title="Delete Announcement"
+        message="Are you sure you want to delete this announcement? This action will remove it permanently for all members."
+        itemName={deleteTarget?.title}
+        confirmText="Delete Announcement"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        loading={Boolean(deletingId)}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (deleteTarget) {
+            await handleDeleteAnnouncement(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+      />
     </div>
   );
 };

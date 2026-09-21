@@ -23,20 +23,27 @@ interface UseApprovalsProps {
 }
 
 export const useApprovals = ({ communityId, showToast }: UseApprovalsProps) => {
-  const [requests, setRequests] = useState<PendingMember[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<PendingMember[]>([]);
+  const [rejectedRequests, setRejectedRequests] = useState<PendingMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'rejected'>('pending');
 
-  const fetchRequests = async (commId: string, tabType: 'pending' | 'rejected') => {
+  const fetchAllRequests = async (commId: string) => {
     setLoading(true);
     try {
-      const res = await apiGet(`/communities/${commId}/${tabType}`);
-      if (res.success && Array.isArray(res.data)) {
-        setRequests(res.data);
+      const [pendingRes, rejectedRes] = await Promise.all([
+        apiGet(`/communities/${commId}/pending`),
+        apiGet(`/communities/${commId}/rejected`),
+      ]);
+      if (pendingRes.success && Array.isArray(pendingRes.data)) {
+        setPendingRequests(pendingRes.data);
+      }
+      if (rejectedRes.success && Array.isArray(rejectedRes.data)) {
+        setRejectedRequests(rejectedRes.data);
       }
     } catch (err: any) {
-      showToast(err.message || `Failed to retrieve ${tabType} join requests`, 'error');
+      showToast(err.message || 'Failed to retrieve join requests', 'error');
     } finally {
       setLoading(false);
     }
@@ -44,9 +51,12 @@ export const useApprovals = ({ communityId, showToast }: UseApprovalsProps) => {
 
   useEffect(() => {
     if (communityId) {
-      fetchRequests(communityId, activeTab);
+      fetchAllRequests(communityId);
+    } else {
+      setPendingRequests([]);
+      setRejectedRequests([]);
     }
-  }, [communityId, activeTab]);
+  }, [communityId]);
 
   const handleApprove = async (membershipId: string) => {
     if (!communityId) return;
@@ -60,7 +70,11 @@ export const useApprovals = ({ communityId, showToast }: UseApprovalsProps) => {
             : 'Membership request approved successfully', 
           'success'
         );
-        setRequests(prev => prev.filter(req => req.id !== membershipId));
+        if (activeTab === 'pending') {
+          setPendingRequests(prev => prev.filter(req => req.id !== membershipId));
+        } else {
+          setRejectedRequests(prev => prev.filter(req => req.id !== membershipId));
+        }
       }
     } catch (err: any) {
       showToast(err.message || 'Approval failed', 'error');
@@ -76,7 +90,11 @@ export const useApprovals = ({ communityId, showToast }: UseApprovalsProps) => {
       const res = await apiPost(`/communities/${communityId}/reject`, { membershipId });
       if (res.success) {
         showToast('Membership request rejected successfully', 'success');
-        setRequests(prev => prev.filter(req => req.id !== membershipId));
+        const targetReq = pendingRequests.find(req => req.id === membershipId);
+        setPendingRequests(prev => prev.filter(req => req.id !== membershipId));
+        if (targetReq) {
+          setRejectedRequests(prev => [targetReq, ...prev]);
+        }
       }
     } catch (err: any) {
       showToast(err.message || 'Rejection failed', 'error');
@@ -85,15 +103,19 @@ export const useApprovals = ({ communityId, showToast }: UseApprovalsProps) => {
     }
   };
 
+  const requests = activeTab === 'pending' ? pendingRequests : rejectedRequests;
+
   return {
     requests,
+    pendingCount: pendingRequests.length,
+    rejectedCount: rejectedRequests.length,
     loading,
     actioningId,
     activeTab,
     setActiveTab,
     handleApprove,
     handleReject,
-    refetchRequests: () => communityId && fetchRequests(communityId, activeTab),
+    refetchRequests: () => communityId && fetchAllRequests(communityId),
   };
 };
 export type { PendingMember };
