@@ -1,15 +1,4 @@
-const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
-
-const getBaseUrl = (): string => {
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    if (!envBaseUrl || envBaseUrl.startsWith('http://')) {
-      return '/api/v1';
-    }
-  }
-  return envBaseUrl || '/api/v1';
-};
-
-export const BASE_URL = getBaseUrl().replace(/\/+$/, '');
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '');
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('admin_access_token');
@@ -48,7 +37,8 @@ const makeRequest = async (endpoint: string, method: string, options: RequestOpt
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const response = await fetch(`${BASE_URL}${cleanEndpoint}`, {
     method,
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
