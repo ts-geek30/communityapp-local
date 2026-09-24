@@ -13,8 +13,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    const fullUrl = req.url || '';
-    const targetUrl = `http://168.144.216.118:5000${fullUrl}`;
+    // Determine the target subpath
+    // When rewritten via /api/proxy?path=:path*, req.query.path contains the matched path segment(s)
+    let subpath = req.query.path;
+    if (Array.isArray(subpath)) {
+      subpath = subpath.join('/');
+    } else if (!subpath) {
+      // Fallback: extract from req.url
+      const urlObj = new URL(req.url, 'http://localhost');
+      subpath = urlObj.pathname.replace(/^\/api\/v1\/?/, '').replace(/^\/api\/proxy\/?/, '');
+    }
+
+    // Reconstruct query parameters excluding 'path'
+    const queryParams = new URLSearchParams();
+    if (req.query) {
+      for (const [key, value] of Object.entries(req.query)) {
+        if (key !== 'path') {
+          if (Array.isArray(value)) {
+            value.forEach((v) => queryParams.append(key, v));
+          } else if (value !== undefined) {
+            queryParams.append(key, value);
+          }
+        }
+      }
+    }
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
+    const cleanSubpath = (subpath || '').replace(/^\/+/, '');
+    const targetUrl = `http://168.144.216.118:5000/api/v1/${cleanSubpath}${queryString}`;
 
     const headers = {};
     if (req.headers['content-type']) {
@@ -39,14 +65,14 @@ export default async function handler(req, res) {
     }
 
     const backendResponse = await fetch(targetUrl, fetchOptions);
-    const responseText = await backendResponse.text();
+    const responseBuffer = await backendResponse.arrayBuffer();
 
     const contentType = backendResponse.headers.get('content-type');
     if (contentType) {
       res.setHeader('Content-Type', contentType);
     }
 
-    res.status(backendResponse.status).send(responseText);
+    res.status(backendResponse.status).send(Buffer.from(responseBuffer));
   } catch (error) {
     console.error('Vercel API Proxy Error:', error);
     res.status(500).json({ success: false, message: error.message || 'Backend Proxy Error' });
